@@ -1,5 +1,7 @@
 # Security — CodeQL, OWASP Dependency Check, gitleaks, OWASP ZAP, AuthN/AuthZ tests
 name: Security — CodeQL & Scans
+permissions:
+  contents: read
 
 on:
   pull_request:
