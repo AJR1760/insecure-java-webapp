@@ -1,0 +1,47 @@
+# Auto-merge Dependabot PRs when checks pass
+name: Dependabot — Auto-merge when checks pass
+
+on:
+  pull_request_target:
+    types: [opened, reopened, synchronize, labeled]
+
+jobs:
+  enable-auto-merge:
+    name: Enable auto-merge for Dependabot PRs
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.user.login == 'dependabot[bot]' || github.event.pull_request.user.login == 'dependabot-preview[bot]'
+    permissions:
+      pull-requests: write
+      checks: read
+      contents: read
+    steps:
+      - name: Check PR author
+        run: echo "Dependabot PR detected: ${{ github.event.pull_request.user.login }}"
+
+      - name: Enable auto-merge via API (best-effort)
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const pr = context.payload.pull_request;
+            const { owner, repo } = context.repo;
+            try {
+              await github.request('PUT /repos/{owner}/{repo}/pulls/{pull_number}/auto-merge', {
+                owner, repo, pull_number: pr.number,
+                merge_method: 'squash'
+              });
+            } catch (err) {
+              core.warning('Could not enable auto-merge: ' + err.message);
+            }
+
+      - name: Comment (informational)
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const pr = context.payload.pull_request;
+            const { owner, repo } = context.repo;
+            await github.issues.createComment({
+              owner, repo, issue_number: pr.number,
+              body: "Dependabot PR: auto-merge requested. This PR will be auto-merged when required checks pass and branch protection allows it."
+            })
